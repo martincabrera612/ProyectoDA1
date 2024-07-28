@@ -1,0 +1,173 @@
+﻿@page "/createBooking"
+@using Domain
+@using Microsoft.AspNetCore.Components
+@using Persistence
+@using BusinessLogic.Services
+@using BusinessLogic.Controllers
+@using BusinessLogic.Exceptions
+@using Domain.Enums
+@inject PricingService pricingService
+@inject BookingController bookingController
+@inject IRepository<Payment> paymentRepository
+@inject IJSRuntime JsRuntime
+@inject AvailabilityService AvailabilityService
+
+<h2>Create Booking</h2>
+<h3>Select a date to book:</h3>
+
+<RadzenLabel Text="Book from:" Component="RadzenDatePickerChangeEvent" Style="margin-right: 8px; vertical-align: middle;" />
+<RadzenDatePicker TValue="DateTime?" Value=@bookingFrom Min="DateTime.Today" Change="@(args => bookingFrom = args)" Name="RadzenDatePickerChangeEvent" />
+<br/>
+<br/>
+<RadzenLabel Text="Book to:" Component="RadzenDatePickerChangeEvent" Style="margin-right: 8px; vertical-align: middle;" />
+<RadzenDatePicker TValue="DateTime?" Min="@bookingFrom.Value.AddDays(1)" Value=@bookingTo Change="@(args => bookingTo = args)" Name="RadzenDatePickerChangeEvent" />
+<RadzenButton Click=@FindDeposits Text="Check available deposits" ButtonStyle="ButtonStyle.Info" />
+
+<h3>Select a deposit to book:</h3>
+
+<RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="5" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                Data="@deposits" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedDeposit>
+    <Columns>
+        <RadzenDataGridColumn Property="Name" Filterable="false" Title="Name" Frozen="true" Width="80px" TextAlign="TextAlign.Center"/>
+        <RadzenDataGridColumn Property="Id" Filterable="false" Title="ID" Frozen="true" Width="80px" TextAlign="TextAlign.Center"/>
+        <RadzenDataGridColumn Property="Area" Title="Area" Frozen="true" Width="160px"/>
+        <RadzenDataGridColumn Property="Size" Title="Size" Frozen="true" Width="160px"/>
+        <RadzenDataGridColumn Property="AirConditioning" Title="Air Conditioning" Frozen="true" Width="160px">
+            <Template>
+                <input type="checkbox" @bind="context.AirConditioning" disabled/>
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+<br/>
+<br/>
+<RadzenButton Click=@CalulatePrice Text="Check booking pricing" ButtonStyle="ButtonStyle.Primary" />
+<br/>
+<br/>
+<RadzenText TextStyle="TextStyle.Body2">
+    <strong>Booking price: </strong>
+</RadzenText>
+<RadzenText TextStyle="TextStyle.H5" TagName="TagName.P" Text="@($"${calulatedPrice}")"></RadzenText>
+@* <RadzenButton  Text="Pay" ButtonStyle="ButtonStyle.Info" /> *@
+@* <RadzenButton Shade="Shade.Lighter" Click=@HandleBooking Text="Send booking request" ButtonStyle="ButtonStyle.Success" /> *@
+<RadzenButton Click=@HandleBooking Text="PAY" ButtonStyle="ButtonStyle.Info" />
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <br/>
+    <div class="alert alert-danger" role="alert">
+        @_errorMessage
+    </div>
+}
+
+@if (_showSuccessMessage)
+{
+    <br/>
+    <div class="alert alert-success" role="alert">
+        Booking request sent successfully! Please wait for confirmation. Thank you!
+    </div>
+}
+
+@code {
+    private IList<Deposit> deposits;
+    private IList<Deposit> selectedDeposit;
+    private DateTime? bookingFrom = DateTime.Now;
+    private DateTime? bookingTo;
+    private double calulatedPrice;
+    private string _errorMessage;
+    private bool _showSuccessMessage = false;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        deposits = new List<Deposit>();
+        selectedDeposit = new List<Deposit>();
+    }
+    
+    private bool SanitizeData()
+    {
+        if (bookingFrom == null || bookingTo == null || selectedDeposit == null)
+        {
+            _errorMessage = "Please fill in all fields.";
+            return false;
+        }
+        else
+        {
+            _errorMessage = "";
+            return true;
+        }
+    }
+    
+    private void CalulatePrice()
+    {
+        if (SanitizeData())
+        {
+            try
+            {
+                pricingService = new PricingService(selectedDeposit.First(), bookingFrom.Value, bookingTo.Value);
+                calulatedPrice = pricingService.CalculatePrice();
+            }
+            catch (Exception e)
+            {
+                _errorMessage = e.Message;
+            }
+        }
+    }
+
+    private async Task FindDeposits()
+    {
+        if (bookingFrom == null || bookingTo == null)
+        {
+            _errorMessage = "Please select a date range first.";
+        }
+        else
+        {
+            try
+            {
+                deposits = AvailabilityService.GetAvailableDeposits(bookingFrom.Value, bookingTo.Value);
+                if (deposits.Count == 0)
+                {
+                    _errorMessage = "No deposits available for the selected date range.";
+                }
+                else
+                {
+                    _errorMessage = null;
+                }
+            }
+            catch (BusinessLogicException e)
+            {
+                _errorMessage = e.Message;
+            }
+        }
+    }
+
+    private async Task HandleBooking()
+    {
+        if (SanitizeData())
+          {
+                try
+                {
+                    CalulatePrice();
+                    Booking booking = new Booking();
+                    booking.From = bookingFrom.Value;
+                    booking.To = bookingTo.Value;
+                    booking._deposit = selectedDeposit.First();
+                    booking.Price = calulatedPrice;
+                    booking.Status = Status.Pending;
+                    Payment payment = new Payment(booking.Price);
+                    if (booking.payment != null) booking.payment.Status = PaymentStatus.Reserved;
+                    bookingController.Create(booking);
+                    
+                    _errorMessage = null;
+                    _showSuccessMessage = true;
+                    await Task.Delay(4000);
+                    
+                    _showSuccessMessage = false;
+                }
+                catch (BusinessLogicException e)
+                {
+                 _errorMessage = e.Message;
+                }catch (InvalidOperationException e)
+                {
+                 _errorMessage = e.Message;}
+          }
+    }
+}

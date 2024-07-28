@@ -1,0 +1,42 @@
+﻿@page "/reportGenerator"
+@using System.IO
+@using BusinessLogic.Services
+@using Domain
+@using Serialization
+@inject ReportService ReportService
+@inject ReservationReportExporter ReservationReportExporter
+
+<h3>Report Generator</h3>
+
+<RadzenButton Click="@GenerateReports" Text="Generate Reports" ButtonStyle="ButtonStyle.Primary" />
+<br /><br />
+@if (generated)
+{
+    <h4>Download Reports:</h4>
+    <ul>
+        <li><a href="@txtFilePath" download>Download TXT Report</a></li>
+        <li><a href="@csvFilePath" download>Download CSV Report</a></li>
+    </ul>
+    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Most likely the download will be blocked by your browser, find the generated files at: ../UserInterface/Reports</RadzenText>
+}
+
+@code {
+    private IList<ReservationReport> reports;
+    private bool generated = false;
+    string txtFilePath = Path.Combine("Reports", "report.txt");
+    string csvFilePath = Path.Combine("Reports", "report.csv");
+
+    private async Task GenerateReports()
+    {
+        reports = ReportService.GenerateReportFile();
+        
+        ReservationReportExporter.ExportToTxt(reports, txtFilePath);
+        
+        ReservationReportExporter.ExportToCsv(reports, csvFilePath);
+        
+        txtFilePath = Path.Combine(Directory.GetCurrentDirectory(), txtFilePath);
+        csvFilePath = Path.Combine(Directory.GetCurrentDirectory(), csvFilePath);
+        
+        generated = true;
+    }
+}

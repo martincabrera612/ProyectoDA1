@@ -1,0 +1,28 @@
+﻿@using Domain
+
+@inject DialogService DialogService
+
+@code {
+    [Parameter]
+    public Booking Booking { get; set; }
+
+    private void CloseDialog()
+    {
+        DialogService.Close();
+    }
+}
+
+<h3>Rejection Notice for Booking @Booking.Id</h3>
+
+<p>The booking was rejected due to:</p>
+<p>@Booking.RejectionReason</p>
+
+<p>Booking Details:</p>
+<ul>
+    <li>From: @Booking.From</li>
+    <li>To: @Booking.To</li>
+    <li>Status: @Booking.Status</li>
+    <li>Price: @Booking.Price</li>
+</ul>
+
+<button @onclick="CloseDialog">Close</button>

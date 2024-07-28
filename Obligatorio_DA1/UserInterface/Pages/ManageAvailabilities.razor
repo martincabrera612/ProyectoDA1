@@ -1,0 +1,104 @@
+﻿@page "/manageAvailabilities"
+@using Microsoft.AspNetCore.Components
+@using Domain
+@using Persistence
+@using BusinessLogic.Services
+@using BusinessLogic.Exceptions
+@inject IRepository<Deposit> depositRepository
+@inject AvailabilityService AvailabilityService
+
+<h3>Manage Availabilities</h3>
+
+<h4>Select a deposit to create an availability for:</h4>
+
+<RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="5" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                Data="@deposits" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single" @bind-Value="@selectedDeposit">
+    <Columns>
+        <RadzenDataGridColumn Property="Id" Filterable="false" Title="ID" Frozen="true" Width="80px" TextAlign="TextAlign.Center"/>
+        <RadzenDataGridColumn Property="Name" Title="Name" Width="200px"/>
+    </Columns>
+</RadzenDataGrid>
+
+<br/>
+
+<h4>Available from:</h4>
+<RadzenDatePicker TValue="DateTime?" Value="@availableFrom" Min="DateTime.Today" Change="@(args => availableFrom = args)" />
+
+<br/>
+<br/>
+
+<h4>Available to:</h4>
+<RadzenDatePicker TValue="DateTime?" Min="@availableFrom.Value.AddDays(1)" Value="@availableTo" Change="@(args => availableTo = args)" />
+
+<br/>
+<br/>
+
+<RadzenButton Click="@HandleAvailability" Text="Create Availability" ButtonStyle="ButtonStyle.Primary" Disabled="IsDisabled" />
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <br/>
+    <div class="alert alert-danger" role="alert">
+        @_errorMessage
+    </div>
+}
+
+@if (_showSuccessMessage)
+{
+    <br/>
+    <div class="alert alert-success" role="alert">
+        Availability created successfully!
+    </div>
+}
+
+@code {
+    private IList<Deposit> deposits;
+    private IList<Deposit> selectedDeposit;
+    private DateTime? availableFrom = DateTime.Now;
+    private DateTime? availableTo;
+    private string _errorMessage;
+    private bool _showSuccessMessage = false;
+    private bool IsDisabled => selectedDeposit == null || availableFrom == null || availableTo == null || availableTo <= availableFrom;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        deposits = depositRepository.FindAll();
+    }
+
+    private async Task HandleAvailability()
+    {
+        if (selectedDeposit != null && availableFrom != null && availableTo != null && availableTo > availableFrom)
+        {
+            try
+            {
+                AvailabilityService.AddAvailability(selectedDeposit.First().Id, availableFrom.Value, availableTo.Value);
+
+                _errorMessage = null;
+                _showSuccessMessage = true;
+                await Task.Delay(4000);
+
+                _showSuccessMessage = false;
+                ResetFields();
+            }
+            catch (BusinessLogicException e)
+            {
+                _errorMessage = e.Message;
+            }
+            catch (Exception)
+            {
+                _errorMessage = "An error occurred. Please try again.";
+            }
+        }
+        else
+        {
+            _errorMessage = "Please fill in all fields with valid data.";
+        }
+    }
+    
+    private void ResetFields()
+    {
+        availableFrom = DateTime.Now;
+        availableTo = null;
+        selectedDeposit = null;
+    }
+}

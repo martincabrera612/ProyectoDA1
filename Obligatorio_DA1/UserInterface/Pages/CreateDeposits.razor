@@ -1,0 +1,146 @@
+﻿@page "/createDeposits"
+@using BusinessLogic
+@using BusinessLogic.Controllers
+@using BusinessLogic.Exceptions
+@using Domain
+@using Domain.Enums
+@using Persistence
+@using Size = Domain.Enums.Size
+@inject NavigationManager NavigationManager
+@inject IRepository<Promotion> PromotionRepository
+@inject DepositController DepositController
+
+<PageTitle>Create deposit</PageTitle>
+
+<h1>Create deposit</h1>
+
+<form @onsubmit="CreateDeposit">
+    <div class="form-group">
+        <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Name</RadzenText>
+        <RadzenTextBox Placeholder="Enter name..." @bind-Value="@_name" class="w-100" aria-label="TextBox with placeholder" />
+    </div>
+    <br/>
+    <div class="form-group">
+        <RadzenStack Orientation="Orientation.Vertical" Gap="4px">
+        <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Area</RadzenText>
+            <RadzenDropDown @bind-Value="@_area" TextProperty="Text" ValueProperty="Value" InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "orientation" }})"
+                        Data="@(Enum.GetValues(typeof(Area)).Cast<Area>().Select(t => new { Text = $"{t}", Value = t }))" Size="ButtonSize.Small" />
+        </RadzenStack>
+    </div>
+    <br/>
+    <div class="form-group">
+        <RadzenStack Orientation="Orientation.Vertical" Gap="4px">
+        <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Size</RadzenText>
+            <RadzenDropDown @bind-Value="@_size" TextProperty="Text" ValueProperty="Value" InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "orientation" }})"
+                        Data="@(Enum.GetValues(typeof(Size)).Cast<Size>().Select(t => new { Text = $"{t}", Value = t }))" Size="ButtonSize.Small" />
+        </RadzenStack>
+    </div>
+    <br/>
+    <div class="form-group">
+        <RadzenCheckBox @bind-Value=@_airConditioning Name="CheckBox1" />
+        <RadzenLabel Text="Air Conditioning" Component="CheckBox1" Style="margin-left: 8px; vertical-align: middle;" />
+    </div>
+    <RadzenDataGrid @ref="grid" AllowFiltering="true" FilterPopupRenderMode="PopupRenderMode.OnDemand" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" AllowPaging="true" PageSize="4"
+                AllowSorting="true" Data="@_promotions" ColumnWidth="200px"
+                SelectionMode="DataGridSelectionMode.Multiple" @bind-Value=@_selectedPromotions class="m-4">
+        <Columns>
+            <RadzenDataGridColumn Width="60px" Sortable="false" Filterable="false">
+                <HeaderTemplate>
+                    <RadzenCheckBox TabIndex="-1" TriState="false" TValue="bool?" InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "Select all items" }})"
+                    Value="@(_selectedPromotions == null || _selectedPromotions?.Any() != true ? false : !_promotions.All(i => _selectedPromotions.Contains(i)) ? null : _promotions.Any(i => _selectedPromotions.Contains(i)))"
+                    Change="@(args => _selectedPromotions = args == true ? _promotions.ToList() : null)" />
+                </HeaderTemplate>
+                <Template Context="data">
+                    <RadzenCheckBox TabIndex="-1" TriState="false" Value="@(_selectedPromotions != null && _selectedPromotions.Contains(data))" InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "Select item" }})"
+                        TValue="bool" Change=@(args => { if(!allowRowSelectOnRowClick) { grid.SelectRow(data); }}) />
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn Property="Label" Title="Label" />
+            <RadzenDataGridColumn Property="Percentage" Title="Discount %" />
+            <RadzenDataGridColumn Property="From" Title="Valid From" />
+            <RadzenDataGridColumn Property="To" Title="Valid To" />
+        </Columns>
+    </RadzenDataGrid>
+    <br/>
+
+    <br/>
+
+    <br/>
+    <button type="submit" class="btn btn-primary">Create</button>
+</form>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <br/>
+    <div class="alert alert-danger" role="alert">
+        @_errorMessage
+    </div>
+}
+
+@if (_showSuccessMessage)
+{
+    <br/>
+    <div class="alert alert-success" role="alert">
+        Deposit created successfully!
+    </div>
+}
+
+@code
+{
+    private RadzenDataGrid<Promotion> grid;
+    private IEnumerable<Promotion> _promotions;
+    private IList<Promotion> _selectedPromotions;
+    private Deposit _deposit;
+    private bool allowRowSelectOnRowClick = true;
+    private Area _area;
+    private Size _size;
+    private bool _airConditioning;
+    private string _name;
+
+    private string? _errorMessage;
+    private bool _showSuccessMessage = false;
+    
+    protected override void OnInitialized()
+    {
+        _promotions = PromotionRepository.FindAll();
+        _selectedPromotions = new List<Promotion>();
+        _deposit = new Deposit();
+    }
+
+    private async Task CreateDeposit()
+    {
+        try
+        {
+            _deposit.Name = _name;
+            _deposit.Area = _area;
+            _deposit.Size = _size;
+            _deposit.AirConditioning = _airConditioning;
+            _deposit.Promotions = _selectedPromotions.ToList();
+            DepositController.Create(_deposit);
+            _showSuccessMessage = true;
+            await Task.Delay(2000);
+            
+            ResetValues();
+            
+        }
+        catch (BusinessLogicException e)
+        {
+            _errorMessage = e.Message;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+    
+    private void ResetValues()
+    {
+        _name = string.Empty;
+        _area = Area.A; 
+        _size = Size.Small;
+        _airConditioning = false;
+        _promotions = new List<Promotion>();
+        _errorMessage = string.Empty;
+        _showSuccessMessage = false;
+    }
+}

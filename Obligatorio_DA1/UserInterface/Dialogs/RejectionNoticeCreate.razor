@@ -1,0 +1,32 @@
+﻿@using Domain
+@using Domain.Enums
+@using Persistence
+@inject IRepository<Booking> bookingRepository
+@inject DialogService DialogService
+
+<RadzenTemplateForm TItem="Booking">
+    <div class="row">
+        <div class="col-md-12">
+            <RadzenTextArea @bind-Value=@rejectionReason Placeholder="Write the rejection notice here..." Style="width:100%; height:150px;" />
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <RadzenButton Text="Save" Click="@(args => SaveRejectionNotice(booking))" ButtonStyle="ButtonStyle.Primary" />
+        </div>
+    </div>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter]
+    public Booking booking { get; set; }
+    public string? rejectionReason { get; set; }
+
+    private void SaveRejectionNotice(Booking booking)
+    {
+        booking.RejectionReason = rejectionReason;
+        booking.Status = Status.Rejected;
+        bookingRepository.Update(booking);
+        DialogService.Close(booking);
+    }
+}

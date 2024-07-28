@@ -1,0 +1,116 @@
+﻿@page "/"
+@using BusinessLogic
+@using BusinessLogic.Controllers
+@using BusinessLogic.Exceptions
+@using Domain
+@inject NavigationManager NavigationManager
+@inject UserController UserController
+
+<PageTitle>Register</PageTitle>
+
+<h1>Register</h1>
+
+<form @onsubmit="HandleRegister">
+    <div class="form-group">
+        <label for="Name">Name:</label>
+        <input id="Name" class="form-control" @bind="_name"/>
+    </div>
+    
+    <br/>
+    <div class="form-group">
+        <label for="Surname">Surname:</label>
+        <input id="Surname" class="form-control" @bind="_surname"/>
+    </div>
+    
+    <br/>
+    <div class="form-group">
+        <label for="Name">Email:</label>
+        <input id="Name" class="form-control" @bind="_email"/>
+    </div>
+
+    <br/>
+    <div class="form-group">
+        <label for="Password">Password:</label>
+        <input id="Password" type="password" class="form-control" @bind="_password"/>
+    </div>
+
+    <br/>
+    <div class="form-group">
+        <label for="PasswordConfirmation">Confirm Password:</label>
+        <input id="PasswordConfirmation" type="password" class="form-control" @bind="_passwordConfirmation"/>
+    </div>
+
+    <br/>
+    <button type="submit" class="btn btn-primary">Register</button>
+</form>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <br/>
+    <div class="alert alert-danger" role="alert">
+        @_errorMessage
+    </div>
+}
+
+@if (_showSuccessMessage)
+{
+    <br/>
+    <div class="alert alert-success" role="alert">
+        User created successfully! You can now login. Redirecting to login page...
+    </div>
+}
+
+@code {
+    User user;
+    private string _name = string.Empty;
+    private string _surname = string.Empty;
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string _passwordConfirmation = string.Empty;
+    
+    private string? _errorMessage;
+    private bool _showSuccessMessage = false;
+    
+    protected override void OnInitialized()
+    {
+        user = new User();
+    }
+
+
+    private async Task HandleRegister()
+    {
+        try
+        {
+            user.Name = _name;
+            user.Surname = _surname;
+            user.Email = _email;
+            user.Password = _password;
+            UserController.Register(user, _passwordConfirmation);
+
+            _errorMessage = null;
+            _showSuccessMessage = true;
+            await Task.Delay(2000);
+            NavigationManager.NavigateTo("/login", true);
+            ResetValues();
+        }
+        catch (BusinessLogicException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    private void ResetValues()
+    {
+        _name = string.Empty;
+        _surname = string.Empty;
+        _email = string.Empty;
+        _password = string.Empty;
+        _passwordConfirmation = string.Empty;
+        _errorMessage = null;
+    }
+
+}

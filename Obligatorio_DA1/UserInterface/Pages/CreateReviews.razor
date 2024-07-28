@@ -1,0 +1,110 @@
+﻿@page "/createReview"
+@using BusinessLogic
+@using BusinessLogic.Controllers
+@using BusinessLogic.Exceptions
+@using Domain
+@using Persistence
+@inject SessionLogic sessionLogic
+@inject IRepository<Booking> bookingRepository
+@inject ReviewController _reviewController
+
+<h3>Select a booking to review:</h3>
+
+    <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="5" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                    Data="@bookings" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedBooking>
+        <Columns>
+            <RadzenDataGridColumn Property="Id" Filterable="false" Title="ID" Frozen="true" Width="80px" TextAlign="TextAlign.Center"/>
+            <RadzenDataGridColumn Property="From" Title="Booked From" Frozen="true" Width="160px"/>
+            <RadzenDataGridColumn Property="To" Title="Booked To" Frozen="true" Width="160px"/>
+            <RadzenDataGridColumn Property="_deposit.Id" Title="Deposit ID" Frozen="true" Width="160px"/>
+        </Columns>
+    </RadzenDataGrid>
+<br><br/>
+    <RadzenText TextStyle="TextStyle.H4">Rate your booking!</RadzenText>
+    <RadzenRating @bind-Value=@selectedRating />
+    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Comments</RadzenText>
+    <RadzenTextArea @bind-Value=@comments Placeholder="Tell us something about your booking..." class="w-100" aria-label="Comments" />
+<br><br/>
+<RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Submit" Click="@SanitizeData" />
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <br/>
+    <div class="alert alert-danger" role="alert">
+        @_errorMessage
+    </div>
+}
+
+@if (_showSuccessMessage)
+{
+    <br/>
+    <div class="alert alert-success" role="alert">
+        Review created successfuly
+    </div>
+}
+
+@code {
+    private IList<Booking> selectedBooking;
+    private List<Booking> bookings;
+    private Review _review;
+    private int selectedRating;
+    private string comments;
+    
+    private string? _errorMessage;
+    private bool _showSuccessMessage = false;
+
+    protected override void OnInitialized()
+    {
+        selectedBooking = new List<Booking>();
+        bookings = bookingRepository.FindAll().Where(b => b._user == sessionLogic.CurrentUser && b.To < DateTime.Now).ToList();
+    }
+
+    private async Task SanitizeData()
+    {
+        if (selectedBooking.Count == 0)
+        {
+            _errorMessage = "You must select a booking to review!";
+        }
+        else
+        {
+            _errorMessage = null;
+            await CreateReview();
+        }
+    }
+
+    private async Task CreateReview()
+    {
+        try
+        {
+            _review = new Review()
+            {
+                Booking = selectedBooking.First(),
+                Comment = comments,
+                Rating = selectedRating,
+                User = sessionLogic.CurrentUser
+            };
+            
+            _reviewController.Create(_review);
+            _errorMessage = null;
+            _showSuccessMessage = true;
+            await Task.Delay(2000);
+
+            ResetValues();
+        }
+        catch (BusinessLogicException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+    
+    private void ResetValues()
+    {
+        selectedBooking = null;
+        selectedRating = 0;
+        comments = null;
+    }
+
+}

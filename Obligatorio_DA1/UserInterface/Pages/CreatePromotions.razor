@@ -1,0 +1,109 @@
+﻿@page "/createPromotions"
+@using BusinessLogic
+@using BusinessLogic.Controllers
+@using BusinessLogic.Exceptions
+@using Domain
+@inject PromotionController PromotionController
+
+<PageTitle>Create promotion</PageTitle>
+
+<h1>Create promotion</h1>
+
+<form @onsubmit="CreatePromotion">
+    <div class="form-group">
+        <label for="Label">Label:</label>
+        <input id="Label" class="form-control" @bind="_label"/>
+    </div>
+    
+    <br/>
+    <div class="form-group">
+        <label for="Percentage">Discount Percentage:</label>
+        <input id="Percentage" class="form-control" @bind="_percentage"/>
+        <h6> Valid percentages are from 5 to 75</h6>
+    </div>
+    
+    <br/>
+    <div class="form-group">
+        <label for="validFrom">Valid From:</label>
+        <input id="validFrom" type="datetime-local" class="form-control" @bind="_from"/>
+    </div>
+
+    <br/>
+    <div class="form-group">
+        <label for="validTo">Valid To:</label>
+        <input id="validTo" type="datetime-local" class="form-control" @bind="_to"/>
+    </div>
+
+    <br/>
+
+    <br/>
+    <button type="submit" class="btn btn-primary">Create</button>
+</form>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <br/>
+    <div class="alert alert-danger" role="alert">
+        @_errorMessage
+    </div>
+}
+
+@if (_showSuccessMessage)
+{
+    <br/>
+    <div class="alert alert-success" role="alert">
+        Promotion created successfully!
+    </div>
+}
+
+@code
+{
+    Promotion _promotion;
+    private string _label = string.Empty;
+    private int _percentage;
+    private DateTime _from = DateTime.Now;
+    private DateTime _to = DateTime.Now;
+
+    private string? _errorMessage;
+    private bool _showSuccessMessage = false;
+    
+    protected override void OnInitialized()
+    {
+        _promotion = new Promotion();
+    }
+
+    private async Task CreatePromotion()
+    {
+        try
+        {
+            _promotion.Label = _label;
+            _promotion.Percentage = _percentage;
+            _promotion.From = _from;
+            _promotion.To = _to;
+            PromotionController.Create(_promotion);
+            _showSuccessMessage = true;
+            await Task.Delay(2000);
+            
+            ResetValues();
+            
+        }
+        catch (BusinessLogicException e)
+        {
+            _errorMessage = e.Message;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+    
+    private void ResetValues()
+    {
+        _label = string.Empty;
+        _percentage = 0;
+        _from = DateTime.Now;
+        _to = DateTime.Now;
+        _errorMessage = string.Empty;
+        _showSuccessMessage = false;
+    }
+}

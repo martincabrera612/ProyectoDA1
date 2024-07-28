@@ -1,0 +1,39 @@
+﻿@page "/logsView"
+@using Microsoft.AspNetCore.Components
+@using Domain
+@using Persistence
+@inject IRepository<Log> LogRepository
+
+<h3>Logs View</h3>
+
+<RadzenDataGrid @ref="logsGrid" AllowPaging="true" AllowSorting="true" IsLoading="@isLoading"
+                Data="@(logs)" Count="@count" LoadData="@LoadData"
+                ColumnWidth="200px" PageSize="20" Style="height: 500px">
+    <Columns>
+        <RadzenDataGridColumn Width="200px" Property="User.Email" Title="Email" />
+        <RadzenDataGridColumn Width="200px" Property="EventType" Title="Action" />
+        <RadzenDataGridColumn Width="200px" Property="TimeStamp" Title="Time" />
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    RadzenDataGrid<Log> logsGrid;
+    IEnumerable<Log> logs;
+    int count;
+    bool isLoading;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        LoadData();
+    }
+    
+    async Task LoadData()
+    {
+        isLoading = true;
+        
+        logs = LogRepository.FindAll().OrderByDescending(x => x.TimeStamp).ToList();
+        
+        isLoading = false;
+    }
+}

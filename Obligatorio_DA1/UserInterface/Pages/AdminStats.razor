@@ -1,0 +1,117 @@
+﻿@page "/adminStats"
+@using Domain.Enums
+@using BusinessLogic.Services
+@using System.Globalization
+@inject StatsService statService
+
+<h3>Admin Stats</h3>
+<div Class="rz-p-0 rz-p-md-12">
+    <RadzenRow Gap="1rem">
+        <RadzenColumn Size="12" SizeSM="6">
+            <RadzenStack>
+                <RadzenFormField Text="Area" Variant="@variant">
+                    <RadzenDropDownDataGrid Data=@areaEnum @bind-Value="@anArea" />
+                </RadzenFormField>
+                <RadzenFormField Text="Date From" Variant="@variant">
+                    <RadzenDatePicker @bind-Value=@fromValue Name="RadzenDatePickerBindValue" ShowCalendarWeek />
+                </RadzenFormField>
+                <RadzenFormField Text="RadzenPassword" Variant="@variant">
+                    <RadzenDatePicker @bind-Value=@toValue Name="RadzenDatePickerBindValue" ShowCalendarWeek />
+                </RadzenFormField>
+            </RadzenStack>
+            <br/>
+            <RadzenButton Text="Calculate" Click="SanitizeParams" />
+        </RadzenColumn>
+        <RadzenColumn>
+            <RadzenText> Earnings: </RadzenText>
+            <br/>
+            <RadzenText Text="@_calulatedEarnings.ToString()"></RadzenText>
+        </RadzenColumn>
+    </RadzenRow>
+</div>
+<div Class="rz-p-0 rz-p-md-12">
+    <RadzenFormField Text="Year" Variant="@variant">
+        <RadzenDropDownDataGrid Data=@displayYears @bind-Value="@selectedYear" Change="@FillDataItems"/>
+    </RadzenFormField>
+    <br />
+    <h4>Deposit bookings per month</h4>
+    <RadzenChart style="height: 400px">
+        <RadzenBarSeries Data="@bookingsYear" CategoryProperty="Month" Title="@selectedYear.ToString()" LineType="LineType.Dashed" ValueProperty="Booked">
+            <RadzenSeriesDataLabels Visible="@showDataLabels"/>
+        </RadzenBarSeries>
+        <RadzenBarOptions Radius="5"/>
+    </RadzenChart>
+</div>
+
+@if (_calulatedEarnings != 0)
+{
+    <br/>
+    <div class="alert alert-success" role="alert">
+        Earnings: @_calulatedEarnings
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <br/>
+    <div class="alert alert-danger" role="alert">
+        @_errorMessage
+    </div>
+}
+
+@code {
+    Variant variant = Variant.Outlined;
+    private Area anArea;
+    private DateTime fromValue = DateTime.Now;
+    private DateTime toValue = DateTime.Now;
+    private double _calulatedEarnings;
+    private int selectedYear = DateTime.Now.Year;
+    bool showDataLabels = false;
+    IEnumerable<int> displayYears;
+    private List<Area> areaEnum;
+
+    private string _errorMessage;
+    
+    protected override void OnInitialized()
+    {
+        displayYears = Enumerable.Range(2010, DateTime.Now.Year - 2010 + 1).Select(i => new DateTime(i, 1, 1).Year);
+        areaEnum = Enum.GetValues(typeof(Area)).Cast<Area>().ToList();
+        FillDataItems();
+    }
+    
+    class DataItem
+    {
+        public string Month { get; set; }
+        public double Booked { get; set; }
+    }
+
+    DataItem[] bookingsYear;
+    
+    private void FillDataItems()
+    {
+        Console.WriteLine("FillDataItems");
+        bookingsYear = new DataItem[12];
+        for (int i = 0; i < 12; i++)
+        {
+            bookingsYear[i] = new DataItem() { Month = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(i + 1), Booked = statService.GetDataForDate(selectedYear, i+1) };
+        }
+    }
+    
+    async Task SanitizeParams()
+    {
+        if (anArea == null || fromValue == null || toValue == null)
+        {
+            _errorMessage = "Please fill in all fields";
+        }
+        else
+        {
+            _errorMessage = null;
+            CalculateEarnings();
+        }
+    }
+
+    async Task CalculateEarnings()
+    {
+        _calulatedEarnings = statService.CalculateEarningsInTimeframe(fromValue, toValue, anArea);
+    }
+}

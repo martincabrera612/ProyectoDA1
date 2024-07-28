@@ -1,0 +1,68 @@
+﻿@page "/manageBookings"
+@using Domain
+@using Domain.Enums
+@using Persistence
+@using UserInterface.Dialogs
+@using BusinessLogic.Services
+@inject IRepository<Booking> bookingRepository
+@inject IRepository<Payment> paymentRepository
+@inject DialogService DialogService
+
+<h3>Manage Bookings</h3>
+
+<RadzenDataGrid @ref="bookingsGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="5" AllowSorting="true"
+                Data="@bookings" TItem="Booking" ColumnWidth="200px">
+    <Columns>
+        <RadzenDataGridColumn Property="Id" Filterable="false" Title="ID" Frozen="true" Width="80px" TextAlign="TextAlign.Center"/>y
+        <RadzenDataGridColumn Property="From" Title="From" Frozen="true" Width="160px" FormatString="{0:d}"/>
+        <RadzenDataGridColumn Property="To" Title="To" Frozen="true" Width="160px" FormatString="{0:d}"/>
+        <RadzenDataGridColumn Property="Status" Title="Status" TextAlign="TextAlign.Center" Width="100px" FormatString="{0:d}"/>
+        <RadzenDataGridColumn Property="payment.Status" Title="Payment Status" TextAlign="TextAlign.Center" Width="100px"/>
+        
+    <RadzenDataGridColumn Context="booking" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
+        <Template Context="booking">
+            @if (booking.Status == Status.Pending)
+            {
+                <RadzenButton Text="Accept" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => AcceptBooking(booking))" @onclick:stopPropagation="true">
+                </RadzenButton>
+                <RadzenButton Text="Reject" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => RejectBooking(booking))" @onclick:stopPropagation="true">
+                </RadzenButton>
+            }
+        </Template>
+    </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    RadzenDataGrid<Booking> bookingsGrid;
+    IEnumerable<Booking> bookings;
+   
+    
+    protected override async Task OnInitializedAsync()
+    {
+        bookings = bookingRepository.FindAll();
+    }
+    
+    private void AcceptBooking(Booking booking)
+    {
+        booking.Status = Status.Approved;
+        if (booking.payment != null)
+        {
+            booking.payment.Status = PaymentStatus.Captured;
+            paymentRepository.Update(booking.payment);
+        }
+        bookingRepository.Update(booking);
+        bookingsGrid.Reload();
+    }
+    
+    private async Task RejectBooking(Booking booking)
+    {
+
+        await DialogService.OpenAsync<RejectionNoticeCreate>("Rejection Notice", new Dictionary<string, object>
+        {
+            { "booking", booking }
+        });
+        
+        bookingsGrid.Reload();
+    }
+}

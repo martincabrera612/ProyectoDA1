@@ -1,0 +1,190 @@
+﻿@using BusinessLogic
+@inject SessionLogic SessionLogic;
+@inject NavigationManager NavigationManager
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Depo Quick</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        @if (_isAdmin)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" @onclick="()=>expandSubNavAdminTools = !expandSubNavAdminTools">
+                    <span class="oi oi-caret-right" aria-hidden="true"></span> Admin Tools
+                </NavLink>
+            </div>
+            @if (expandSubNavAdminTools)
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="adminRegister">
+                        <span class="oi oi-star" aria-hidden="true"></span> Admin Register
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="logsView">
+                        <span class="oi oi-file" aria-hidden="true"></span> Logs
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="adminStats">
+                        <span class="oi oi-bar-chart" aria-hidden="true"></span> Statistics
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="manageBookings">
+                        <span class="oi oi-book" aria-hidden="true"></span> Manage Bookings
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="reportGenerator">
+                        <span class="oi oi-star" aria-hidden="true"></span> Create Reports
+                    </NavLink>
+                </div>
+            }
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" @onclick="()=>expandSubNavPromotions = !expandSubNavPromotions">
+                        <span class="oi oi-caret-right" aria-hidden="true"></span> Promotions
+                    </NavLink>
+                </div>
+                @if (expandSubNavPromotions)
+                {
+                    <ul class="nav flex-colum">
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="createPromotions">
+                                <span class="oi oi-plus" aria-hidden="true"></span> Create
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="managePromotions">
+                                <span class="oi oi-project" aria-hidden="true"></span> Manage
+                            </NavLink>
+                        </div>
+                    </ul>
+                }
+            }
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" @onclick="()=>expandSubNavDeposits = !expandSubNavDeposits">
+                    <span class="oi oi-caret-right" aria-hidden="true"></span> Deposits
+                </NavLink>
+            </div>
+            @if (expandSubNavDeposits)
+            {
+                <ul class="nav flex-colum">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="createDeposits">
+                            <span class="oi oi-plus" aria-hidden="true"></span> Create
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="manageDeposits">
+                            <span class="oi oi-project" aria-hidden="true"></span> Manage
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="manageAvailabilities">
+                            <span class="oi oi-project" aria-hidden="true"></span> Manage Availabilities
+                        </NavLink>
+                    </div>
+                </ul>
+            }
+        }
+        @if (!_isAuthenticated)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="login">
+                    <span class="oi oi-account-login" aria-hidden="true"></span> Login
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                    <span class="oi oi-plus" aria-hidden="true"></span> Register
+                </NavLink>
+            </div>
+        }
+        else
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="createBooking">
+                    <span class="oi oi-home" aria-hidden="true"></span> Book a Deposit
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="createReview">
+                    <span class="oi oi-thumb-up" aria-hidden="true"></span> Create a Review
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="viewBookings">
+                    <span class="oi oi-list" aria-hidden="true"></span> View Bookings
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <button class="nav-link btn btn-link text-start" @onclick="Logout">
+                    <span class="oi oi-account-logout" aria-hidden="true"></span> Logout
+                </button>
+            </div>
+        }
+    </nav>
+</div>
+
+@code {
+    private bool _isAuthenticated = false;
+    private bool _isAdmin = false;
+    private bool _collapseNavMenu = true;
+    private bool expandSubNavDeposits;
+    private bool expandSubNavPromotions;
+    private bool expandSubNavAdminTools;
+    private bool multiple = false;
+
+    private string? NavMenuCssClass => _collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        _collapseNavMenu = !_collapseNavMenu;
+    }
+    
+    protected override void OnInitialized()
+    {
+        Console.WriteLine("AUTH: " + _isAuthenticated + "ADMIN:" + _isAdmin);
+        _isAuthenticated = SessionLogic.IsLoggedIn();
+        if (_isAuthenticated)
+        {
+            _isAdmin = SessionLogic.IsAdmin();
+        }
+        
+        SessionLogic.OnLogin += HandleLogin;
+    }
+
+    private async void HandleLogin()
+    {
+        _isAuthenticated = true;
+        _isAdmin = SessionLogic.IsAdmin();
+        await Task.Delay(2000);
+        await InvokeAsync(() =>
+        {
+            StateHasChanged();
+        });
+    }
+    
+    private void Logout()
+    {
+        SessionLogic.Logout();
+        _isAuthenticated = false;
+        _isAdmin = false;
+        NavigationManager.NavigateTo("");
+        
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        SessionLogic.OnLogin -= HandleLogin;
+    }
+}

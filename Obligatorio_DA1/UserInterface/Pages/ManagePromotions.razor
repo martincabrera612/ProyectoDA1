@@ -1,0 +1,150 @@
+﻿@page "/managePromotions"
+@using Domain
+@using Microsoft.AspNetCore.Components
+@using Persistence
+@using BusinessLogic
+@using BusinessLogic.Controllers
+@inject IRepository<Promotion> PromotionRepository
+@inject PromotionController PromotionController
+@inject IJSRuntime JsRuntime
+
+<PageTitle>Manage promotions</PageTitle>
+
+<h3>ManagePromotions</h3>
+
+
+<RadzenDataGrid @ref="promotionGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="5" AllowSorting="true" EditMode="@editMode"
+                Data="@promotions" TItem="Promotion" RowUpdate="@OnUpdateRow" Sort="@Reset" Page="@Reset" Filter="@Reset" ColumnWidth="200px">
+    <Columns>
+        <RadzenDataGridColumn Property="Id" Title="Promotion Id" Width="120px" Frozen="true" />
+        <RadzenDataGridColumn Property="Label" Title="Label" Width="200px">
+            <EditTemplate Context="promotion">
+                <RadzenTextBox @bind-Value="promotion.Label" Style="width:200px; display: block" Name="Label" />
+                <RadzenRequiredValidator Text="Label is required" Component="Label" Popup="true" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Property="Percentage" Title="Percentage" Width="200px">
+            <EditTemplate Context="promotion">
+                <RadzenNumeric @bind-Value="promotion.Percentage" Style="width:100%" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Property="From" Title="Start Date" Width="200px">
+            <EditTemplate Context="promotion">
+                <RadzenDatePicker @bind-Value="promotion.From" Style="width:100%" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Property="To" Title="End Date" Width="200px">
+            <EditTemplate Context="promotion">
+                <RadzenDatePicker @bind-Value="promotion.To" Style="width:100%" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        
+        <RadzenDataGridColumn Context="order" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
+            <Template Context="promotion">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(promotion))" @onclick:stopPropagation="true">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(promotion))" @onclick:stopPropagation="true">
+                </RadzenButton>
+            </Template>
+            <EditTemplate Context="promotion">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(promotion))">
+                </RadzenButton>
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@((args) => CancelEdit(promotion))">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(promotion))">
+                </RadzenButton>
+            </EditTemplate>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <br/>
+    <div class="alert alert-danger" role="alert">
+        @_errorMessage
+    </div>
+}
+
+@code {
+    RadzenDataGrid<Promotion> promotionGrid;
+    IEnumerable<Promotion> promotions;
+    private string _errorMessage;
+
+    DataGridEditMode editMode = DataGridEditMode.Single;
+    
+    List<Promotion> promotionsToUpdate = new List<Promotion>();
+
+    void Reset()
+    {
+        promotionsToUpdate.Clear();
+    }
+
+    void Reset(Promotion promotion)
+    {
+        promotionsToUpdate.Remove(promotion);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        promotions = PromotionRepository.FindAll();
+    }
+
+    async Task EditRow(Promotion promotion)
+    {
+        if (editMode == DataGridEditMode.Single)
+        {
+            Reset();
+        }
+
+        promotionsToUpdate.Add(promotion);
+        await promotionGrid.EditRow(promotion);
+    }
+
+    void OnUpdateRow(Promotion promotion)
+    {
+        Reset(promotion);
+
+        try
+        {
+            PromotionController.Update(promotion);
+        }
+        catch (Exception e)
+        {
+            CancelEdit(promotion);
+            _errorMessage = e.Message;
+        }
+    }
+
+    async Task SaveRow(Promotion promotion)
+    {
+        await promotionGrid.UpdateRow(promotion);
+    }
+
+    void CancelEdit(Promotion promotion)
+    {
+        Reset(promotion);
+
+        promotionGrid.CancelEditRow(promotion);
+        promotionGrid.Reload();
+    }
+
+    async Task DeleteRow(Promotion promotion)
+    {
+        Reset(promotion);
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        
+        if (promotions.Contains(promotion) && confirmed)
+        {
+            PromotionController.Delete(promotion.Id);
+
+            await promotionGrid.Reload();
+        }
+        else
+        {
+            promotionGrid.CancelEditRow(promotion);
+            await promotionGrid.Reload();
+        }
+    }
+}

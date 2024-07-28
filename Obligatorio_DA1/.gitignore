@@ -1,0 +1,53 @@
+# Rider-specific files/folders
+.idea/
+*.sln.iml
+*.suo
+*.user
+*.userprefs
+*.resharper
+*.resharper.user
+*.ReSharper
+_ReSharper.*
+*.resharper.user.*
+*.rider
+*.rider.user
+*.rider.user.settings
+*.DotSettings
+
+# Build folders
+bin/
+obj/
+
+# Dependency folders
+/packages/
+/Dependencies/
+
+# Visual Studio Code files
+.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# User-specific files
+*.csproj.user
+*.suo
+*.userprefs
+docker-compose.yml
+
+# Logs
+*.log
+
+# Compiled files
+*.dll
+*.exe
+*.pdb
+
+# NuGet
+*.nuget/
+*.nupkg
+
+# Backup files
+*.bak

@@ -1,0 +1,131 @@
+﻿@page "/manageDeposits"
+@using Domain
+@using Microsoft.AspNetCore.Components
+@using Persistence
+@using BusinessLogic
+@using BusinessLogic.Controllers
+@using Domain.Enums
+@inject IRepository<Deposit> DepositRepository
+@inject DepositController DepositController
+@inject IJSRuntime JsRuntime
+
+<PageTitle>Manage deposits</PageTitle>
+
+<h3>Manage Deposits</h3>
+
+
+<RadzenDataGrid @ref="depositsGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="5" AllowSorting="true" EditMode="@editMode"
+                Data="@deposits" TItem="Deposit" RowUpdate="@OnUpdateRow" Sort="@Reset" Page="@Reset" Filter="@Reset" ColumnWidth="200px">
+    <Columns>
+        <RadzenDataGridColumn Property="Id" Title="Deposit Id" Width="120px" Frozen="true" />
+        <RadzenDataGridColumn Property="Area" Title="Area" Width="200px">
+            <EditTemplate Context="deposit">
+                <RadzenDropDown @bind-Value="@deposit.Area" TextProperty="Text" ValueProperty="Value" InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "orientation" }})"
+                            Data="@(Enum.GetValues(typeof(Area)).Cast<Area>().Select(t => new { Text = $"{t}", Value = t }))" Size="ButtonSize.Small" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Property="Size" Title="Size" Width="200px">
+            <EditTemplate Context="deposit">
+                <RadzenDropDown @bind-Value="@deposit.Size" TextProperty="Text" ValueProperty="Value" InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "orientation" }})"
+                            Data="@(Enum.GetValues(typeof(Size)).Cast<Size>().Select(t => new { Text = $"{t}", Value = t }))" Size="ButtonSize.Small" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Property="AirConditioning" Title="Air Conditioning" Width="200px">
+            <EditTemplate Context="deposit">
+                <RadzenCheckBox @bind-Value=@deposit.AirConditioning Name="CheckBox1" />
+                <RadzenLabel Text="Air Conditioning" Component="CheckBox1" Style="margin-left: 8px; vertical-align: middle;" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Context="order" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
+            <Template Context="deposit">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(deposit))" @onclick:stopPropagation="true">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(deposit))" @onclick:stopPropagation="true">
+                </RadzenButton>
+            </Template>
+            <EditTemplate Context="deposit">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(deposit))">
+                </RadzenButton>
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@((args) => CancelEdit(deposit))">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(deposit))">
+                </RadzenButton>
+            </EditTemplate>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    RadzenDataGrid<Deposit> depositsGrid;
+    IEnumerable<Deposit> deposits;
+
+    DataGridEditMode editMode = DataGridEditMode.Single;
+    
+    List<Deposit> depositsToUpdate = new List<Deposit>();
+
+    void Reset()
+    {
+        depositsToUpdate.Clear();
+    }
+
+    void Reset(Deposit promotion)
+    {
+        depositsToUpdate.Remove(promotion);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        deposits = DepositRepository.FindAll();
+    }
+
+    async Task EditRow(Deposit deposit)
+    {
+        if (editMode == DataGridEditMode.Single)
+        {
+            Reset();
+        }
+
+        depositsToUpdate.Add(deposit);
+        await depositsGrid.EditRow(deposit);
+    }
+
+    void OnUpdateRow(Deposit deposit)
+    {
+        Reset(deposit);
+
+        DepositController.Update(deposit);
+    }
+
+    async Task SaveRow(Deposit deposit)
+    {
+        await depositsGrid.UpdateRow(deposit);
+    }
+
+    void CancelEdit(Deposit deposit)
+    {
+        Reset(deposit);
+
+        depositsGrid.CancelEditRow(deposit);
+    }
+
+    async Task DeleteRow(Deposit deposit)
+    {
+        Reset(deposit);
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        
+        if (deposits.Contains(deposit) && confirmed)
+        {
+            DepositController.Delete(deposit.Id);
+
+            await depositsGrid.Reload();
+        }
+        else
+        {
+            depositsGrid.CancelEditRow(deposit);
+            await depositsGrid.Reload();
+        }
+    }
+}

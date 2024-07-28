@@ -1,0 +1,51 @@
+﻿@page "/viewBookings"
+@using BusinessLogic
+@using Domain
+@using Domain.Enums
+@using Persistence
+@using UserInterface.Dialogs
+@inject SessionLogic _sessionLogic
+@inject IRepository<Booking> _bookingRepository
+@inject DialogService DialogService
+
+<h3>View Bookings</h3>
+<RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="7" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                Data="@bookings" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or">
+    <Columns>
+        <RadzenDataGridColumn Property="Id" Filterable="false" Title="ID" Frozen="true" Width="80px" TextAlign="TextAlign.Center"/>
+        <RadzenDataGridColumn Property="From" Title="From" Frozen="true" Width="160px" FormatString="{0:d}"/>
+        <RadzenDataGridColumn Property="To" Title="To" Frozen="true" Width="160px" FormatString="{0:d}"/>
+        <RadzenDataGridColumn Property="Status" Title="Booking Status" Frozen="true" Width="160px">
+            <Template>
+                @if (context.Status == Status.Rejected)
+                {
+                    <button @onclick="() => OpenRejectionNotice(context)">View Rejection Notice</button>
+                }
+                else
+                {
+                    @context.Status.ToString()
+                }
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Property="_deposit.Id" Title="Deposit ID" Frozen="true" Width="160px"/>
+        <RadzenDataGridColumn Property="Price" Title="Price" Frozen="true" Width="160px"/>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    IList<Booking> bookings;
+    IList<Booking> rejectedBookings;
+    private bool anyRejected;
+    User user;
+
+    protected override void OnInitialized()
+    {
+        user = _sessionLogic.CurrentUser;
+        bookings = _bookingRepository.FindAll().Where(b => b._user == user).ToList();
+    }
+    
+    private void OpenRejectionNotice(Booking booking)
+    {
+        DialogService.OpenAsync<RejectionNoticeDialog>("Rejection Notice", new Dictionary<string, object>() { { "booking", booking } });
+    }
+}
